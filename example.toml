@@ -1,11 +1,11 @@
-# Global configuration. All keys are optional; values here are defaults.
-host = "0.0.0.0"
-port = 6391
+## Global configuration. Both are optional; values here are defaults.
+# host = "0.0.0.0"
+# port = 6391
 
-# Optional: require authentication, via Basic or Bearer HTTP Authorization header.
-# If both are specified, accepts either. Leaving keys unset disables authentication
-# (the default). Setting one but not both of auth.basic.user and auth.basic.pass
-# is an error.
+## Optional: require authorization, via Basic or Bearer HTTP Authorization header.
+## If both are specified, accepts either. Leaving keys unset disables authorization
+## (the default). Setting one but not both of auth.basic.user and auth.basic.pass
+## is an error.
 # [auth.basic]
 # user = ""
 # pass = ""
@@ -14,15 +14,20 @@ port = 6391
 # token = ""
 
 [[deployment]]
-# This is an example deployment configuration for sidem itself.
+## This is an example deployment configuration for sidem itself.
 name = "sidem" # Required within deployment: trigger on requests to /deploy/:name
 
-# Either `script` or `command` and `args` is required. Supplying `script` and either
-# `command` or `args` is an error; `args` may be omitted from `command`.
-#
-# `script` is passed to `bash`. If your system does not have bash installed, or you
-# want to use a different shell, use `command` and call that shell directly or make
-# your script executable and set its shebang accordingly.
+## Either `script` or `command` and `args` is required. Supplying `script` and either
+## `command` or `args` is an error; `args` may be omitted from `command`.
+##
+## `script` is passed to `bash`. If your system does not have bash installed, or you
+## want to use a different shell, use `command` and call that shell directly or make
+## your script executable and set its shebang accordingly.
 script = "/etc/sidem/deployments/sidem.bash"
 # command = "ruby"
 # args = ["-e", "puts :hello"]
+
+[[deployment]]
+name = "example"
+command = "sh"
+args = ["-c", "sleep 1; echo success"]

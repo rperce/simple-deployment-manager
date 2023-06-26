@@ -16,7 +16,7 @@ use config::{Auth, Config, ConfigFile, Deployment};
 #[derive(Clone, Debug, Default, Serialize)]
 pub enum DeploymentState {
     #[default]
-    NeverDeployed,
+    Starting,
     InProgress,
     Failed,
     Completed,
@@ -44,7 +44,7 @@ fn deploy(
     config.deployment.get(name).map(|deployment| {
         let status = DeploymentStatus {
             name: name.to_string(),
-            state: DeploymentState::InProgress,
+            state: DeploymentState::Starting,
             ..Default::default()
         };
         status_map
@@ -57,6 +57,17 @@ fn deploy(
         let status_map = status_map.inner().clone();
         rocket::tokio::spawn(async move {
             let now = Utc::now();
+
+            status_map.write().unwrap().insert(
+                name.to_string(),
+                DeploymentStatus {
+                    name: name.to_string(),
+                    state: DeploymentState::InProgress,
+                    last_deployed: Some(now),
+                    ..Default::default()
+                },
+            );
+
             let output = match deployment {
                 Deployment::Script { script, .. } => Command::new("/usr/bin/env")
                     .arg("bash")
