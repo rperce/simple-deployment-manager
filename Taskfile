@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -eo pipefail
+PATH=./node_modules/.bin:"$PATH"
+help() { declare -F | awk -v ORS="   " '{ print $3 }'; echo; }
+die() { >&2 printf "%s\n" "$*"; exit 1; }
+
+section=""
+grey()  { printf "\33[37;2m%s\33[0;m" "$*"; }
+red()   { printf "\33[31;1m%s\33[0;m" "$*"; }
+green() { printf "\33[32;1m%s\33[0;m" "$*"; }
+_status() {
+  printf "\33[2K\r%s %s" "$1" "$section"
+}
+_failure() { _status "$(red "✗")"; echo;  }
+_success() { _status "$(green "✓")"; echo; }
+_section() {
+  section="$1"
+  printf "\33[@K\r%s %s\r" "$(grey "…")" "$section"
+}
+
+version() {
+  local bump;
+  bump="$1"
+  if [[ ! ( "$bump" =~ (patch|minor|major) ) ]]; then
+    die "Error: second argument to 'version' must be one of 'patch', 'minor', or 'major' (received '$1')."
+  fi
+
+  local DESIRED_BRANCH=main
+
+  _section 'correct git branch'
+  local branch;
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "$branch" = "$DESIRED_BRANCH" ]]; then
+    _success
+  else
+    _failure
+    die "Error: must be on branch '$DESIRED_BRANCH' (currently '$branch')."
+  fi
+
+  _section 'clean workdir'
+  local changes;
+  changes="$(git diff-index --name-only --ignore-submodules HEAD --)"
+  if [[ -z "$changes" ]]; then
+    _success
+  else
+    _failure
+    die "Error: uncommitted local changes (check 'git status')."
+  fi
+
+  _section 'up-to-date with remote'
+  git fetch origin main >/dev/null 2>&1
+
+  if git status -sb | grep -q behind; then
+    _failure
+    die "Error: local branch is behind remote (check 'git status')."
+  else
+    _success
+  fi
+
+  _section 'update Cargo.toml'
+  if cargo set-version --bump "$bump" >/dev/null; then _success; else _failure; fi
+
+  _section 'commit'
+  version=v"$(grep -E '^version = ' Cargo.toml | cut -d'"' -f2)"
+  git add Cargo.toml Cargo.lock
+  git commit -m ":bookmark: Release $version"
+  git tag -m "$version" "$version"
+  _success
+
+  _section 'push commit'
+  if git push; then _success; else _failure; fi
+
+  _section 'push tags'
+  if git push --tags; then _success; else _failure; fi
+}
+"$@"
