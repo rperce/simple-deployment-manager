@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
+use argparse::{ArgumentParser, StoreOption};
 use chrono::{DateTime, Utc};
 use rocket::http;
 use rocket::serde::json::Json;
@@ -133,9 +134,22 @@ fn status(
 
 #[launch]
 fn rocket() -> _ {
-    let path: ConfigFile = "./example.toml".to_string();
+    let mut config: Option<String> = None;
+    {
+        // this block limits scope of borrows by ap.refer() method
+        let mut ap = ArgumentParser::new();
+        ap.set_description("Start a webserver to run deployment scripts on request.");
+        ap.refer(&mut config)
+            .add_option(&["-c", "--config"], StoreOption, "Path to config file");
+        ap.parse_args_or_exit();
+    }
+
+    let path: ConfigFile = config.unwrap_or_else(|| {
+        eprintln!("Error: argument to --config is required. Check `sidem --help` for usage.");
+        std::process::exit(1);
+    });
+
     let conf = config::load_file(path.clone()).unwrap();
-    println!("conf {:?}", conf);
     let rocket_config = rocket::Config {
         port: conf.port,
         address: conf.host.into(),
