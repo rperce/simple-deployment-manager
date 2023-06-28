@@ -12,6 +12,7 @@ use std::process::Command;
 use std::sync::{Arc, RwLock};
 
 mod config;
+mod guards;
 use config::{Auth, Config, ConfigFile, Deployment};
 
 #[derive(Clone, Debug, Default, Serialize)]

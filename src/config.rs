@@ -1,7 +1,5 @@
-use base64::{engine::general_purpose as b64, Engine as _};
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::response::status::Forbidden;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -74,6 +72,17 @@ pub struct Config {
     pub deployment: HashMap<String, Deployment>,
 }
 
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            host: default_host(),
+            port: default_port(),
+            auth: None,
+            deployment: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Responder)]
 #[response(status = 500, content_type = "json")]
 pub enum ConfigError {
@@ -138,59 +147,5 @@ impl<'r> FromRequest<'r> for Config {
             Ok(conf) => Outcome::Success(conf),
             Err(err) => Outcome::Failure((Status::InternalServerError, err)),
         }
-    }
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for Auth {
-    type Error = Forbidden<&'static str>;
-
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let config = request.guard::<Config>().await.unwrap();
-        let mut req_auth = Auth {
-            basic: None,
-            bearer: None,
-        };
-        if let Some(conf_auth) = config.auth {
-            let authz = request.headers().get_one("authorization");
-            req_auth.basic = authz
-                .map(|value| {
-                    if value.len() < 7 || &value[..6] != "Basic " {
-                        return None;
-                    }
-                    let decoded = match b64::STANDARD_NO_PAD.decode(&value[6..]) {
-                        Ok(bytes) => String::from_utf8(bytes).unwrap(),
-                        Err(_) => return None,
-                    };
-
-                    decoded.split_once(":").map(|(user, pass)| BasicAuth {
-                        user: user.to_string(),
-                        pass: pass.to_string(),
-                    })
-                })
-                .flatten();
-
-            req_auth.bearer = authz
-                .map(|value| {
-                    if value.len() < 7 || &value[..7] != "Bearer " {
-                        return None;
-                    }
-
-                    Some(BearerAuth {
-                        token: value[7..].to_string(),
-                    })
-                })
-                .flatten();
-
-            let basic_ok = conf_auth.basic != None && conf_auth.basic == req_auth.basic;
-            let bearer_ok = conf_auth.bearer != None && conf_auth.bearer == req_auth.bearer;
-            if !basic_ok && !bearer_ok {
-                return Outcome::Failure((
-                    rocket::http::Status { code: 403 },
-                    Forbidden(Some("Not authorized.")),
-                ));
-            }
-        }
-        return Outcome::Success(req_auth);
     }
 }
