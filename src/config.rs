@@ -42,7 +42,7 @@ pub struct Auth {
 }
 
 fn default_host() -> Ipv4Addr {
-    Ipv4Addr::new(0, 0, 0, 0)
+    Ipv4Addr::new(127, 0, 0, 1)
 }
 fn default_port() -> u16 {
     6391

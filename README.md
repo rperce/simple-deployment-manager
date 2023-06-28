@@ -22,7 +22,7 @@ An example configuration file:
 
 ```toml
 ## Global configuration. Both are optional; values here are defaults.
-# host = "0.0.0.0"
+# host = "127.0.0.1"
 # port = 6391
 
 ## Optional: require authorization, via Basic or Bearer HTTP Authorization header.
